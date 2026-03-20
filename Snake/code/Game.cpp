@@ -49,10 +49,27 @@ Snake::~Snake()
 void Snake::eat(Food* food)
 {
 	SnakePart* sp = new SnakePart(food->m_XPos, food->m_YPos, food->m_Width, food->m_Height);
-	delete food;
-
 	m_Body.push_back(sp);
-	m_Head = sp;
+	
+	int newXPos = food->m_XPos;
+	int newYPos = food->m_YPos;
+	
+	for (int i = 0; i < m_Body.size(); i++)
+	{
+		int prevXPos = m_Body.at(i)->m_XPos;
+		int prevYPos = m_Body.at(i)->m_YPos;
+
+		m_Body.at(i)->m_XPos = newXPos;
+		m_Body.at(i)->m_YPos = newYPos;
+
+		newXPos = prevXPos;
+		newYPos = prevYPos;
+	}
+}
+
+bool Snake::checkCollision(int xPos, int yPos)
+{
+	return xPos == m_Head->m_XPos && yPos == m_Head->m_YPos;
 }
 
 int Snake::length()
@@ -62,6 +79,14 @@ int Snake::length()
 
 void Snake::move(int xDir, int yDir)
 {
+	if (this->length() > 1)
+	{
+		if (m_XDir == -xDir)
+			xDir = m_XDir;
+		if (m_YDir == -yDir)
+			yDir = m_YDir;
+	}
+
 	m_XDir = xDir;
 	m_YDir = yDir;
 
@@ -72,21 +97,33 @@ void Snake::move(int xDir, int yDir)
 	{
 		newHeadX = SCREEN_WIDTH;
 	}
+	else if (newHeadX > SCREEN_WIDTH - m_Head->m_Width)
+	{
+		newHeadX = 0;
+	}
+	
 	if (newHeadY < 0)
 	{
 		newHeadY = SCREEN_HEIGHT;
 	}
-	if (newHeadX > SCREEN_WIDTH)
-	{
-		newHeadX = 0;
-	}
-	if (newHeadY > SCREEN_HEIGHT)
+	else if (newHeadY > SCREEN_HEIGHT - m_Head->m_Height)
 	{
 		newHeadY = 0;
 	}
-	
-	m_Head->m_XPos = newHeadX;
-	m_Head->m_YPos = newHeadY;
+
+	int newXPos = newHeadX;
+	int newYPos = newHeadY;
+	for (int i = 0; i < m_Body.size(); i++) 
+	{
+		int prevXPos = m_Body.at(i)->m_XPos;
+		int prevYPos = m_Body.at(i)->m_YPos;
+		
+		m_Body.at(i)->m_XPos = newXPos;
+		m_Body.at(i)->m_YPos = newYPos;
+
+		newXPos = prevXPos;
+		newYPos = prevYPos;
+	}
 }
 
 void Snake::draw(SDL_Renderer* renderer)
@@ -95,6 +132,15 @@ void Snake::draw(SDL_Renderer* renderer)
 	{
 		sp->draw(renderer, m_Color);
 	}
+}
+
+void Food::respwan()
+{
+	int cellsAlongXAxis = SCREEN_WIDTH / m_Width;
+	int cellsAlongYAxis = SCREEN_HEIGHT / m_Height;
+
+	m_XPos = (rand() % cellsAlongXAxis) * m_Width;
+	m_YPos = (rand() % cellsAlongYAxis) * m_Height;
 }
 
 bool Game::init()
@@ -116,7 +162,7 @@ bool Game::init()
 		}
 		else
 		{
-			m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+			m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_ACCELERATED);
 			if(m_Renderer == NULL)
 			{
 				printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
@@ -219,31 +265,64 @@ void Game::run()
 	m_IsRunning = true;
 	
 	Timer fpsTimer;
+	Timer capTimer;
 
 	int countedFrames = 0;
-	fpsTimer.start();
 
 	Color redColor = Color(255, 0, 0, 255);
 	Color blueColor = Color(0, 0, 255, 255);
 
 	Snake snake;
+	Food food = Food(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, snake.m_WidhtPerPart, snake.m_HeightPerPart);
 
 	while (m_IsRunning)
 	{
+		fpsTimer.start();
+		capTimer.start();
+
 		this->clearFrame();
 		this->input();
 
-		snake.move(m_SnakeXDir, m_SnakeYDir);
-
 		this->drawGrid(blueColor, snake.m_WidhtPerPart, snake.m_HeightPerPart);
+		
+		snake.move(m_SnakeXDir, m_SnakeYDir);
+		
+		if (snake.checkCollision(food.m_XPos, food.m_YPos))
+		{
+			snake.eat(&food);
+			
+			food.respwan();
+			bool perfectRespawn = false;
+			while (!perfectRespawn)
+			{
+				perfectRespawn = true;
+				for (SnakePart* sp : snake.m_Body)
+				{
+					if (sp->m_XPos == food.m_XPos && sp->m_YPos == food.m_YPos)
+					{
+						perfectRespawn = false;
+						food.respwan();
+						break;
+					}
+				}
+			}
+		}
+
+		food.draw(m_Renderer, food.m_Color);
+
 		snake.draw(m_Renderer);
 
 		// Update the renderer
 		SDL_RenderPresent(m_Renderer);
 
-		// TODO: There is a bug in the timer!!
-		double avgFPS = countedFrames++ / (fpsTimer.getTicks() / 1000.0);
-		std::cout << avgFPS << std::endl;
+		int frameTicks = capTimer.getTicks();
+		if (frameTicks < SCREEN_TICKS_PER_FRAME)
+		{
+			SDL_Delay(SCREEN_TICKS_PER_FRAME - frameTicks);
+		}
+
+		double FPS = 1 / (fpsTimer.getTicks() / 1000.0);
+		std::cout << FPS << std::endl;
 	}
 
 	this->close();

@@ -13,7 +13,7 @@
 //Screen dimension constants
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 800; 
-const int SCREEN_FPS = 60;
+const int SCREEN_FPS = 15;
 const int SCREEN_TICKS_PER_FRAME = 1000 / SCREEN_FPS;
 
 struct Rect
@@ -44,6 +44,8 @@ struct Food : public Rect
 {
 	Food(int x, int y, int w, int h, Color color = Color(255, 0, 0, 255)) : Rect(x, y, w, h), m_Color(color) {}
 	Color m_Color;
+
+	void respwan();
 };
 
 
