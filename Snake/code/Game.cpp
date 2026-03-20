@@ -33,6 +33,7 @@ Snake::Snake()
 	m_YDir = 0;
 	m_WidhtPerPart = 20;
 	m_HeightPerPart = 20;
+	m_IsAlive = true;
 	m_Color = Color(0, 255, 0, 255);
 	m_Head = new SnakePart(0, 0, m_WidhtPerPart, m_HeightPerPart);
 	m_Body.push_back(m_Head);
@@ -46,14 +47,11 @@ Snake::~Snake()
 	}
 }
 
-void Snake::eat(Food* food)
+void Snake::updateBody(int newPosX, int newPosY)
 {
-	SnakePart* sp = new SnakePart(food->m_XPos, food->m_YPos, food->m_Width, food->m_Height);
-	m_Body.push_back(sp);
-	
-	int newXPos = food->m_XPos;
-	int newYPos = food->m_YPos;
-	
+	int newXPos = newPosX;
+	int newYPos = newPosY;
+
 	for (int i = 0; i < m_Body.size(); i++)
 	{
 		int prevXPos = m_Body.at(i)->m_XPos;
@@ -67,9 +65,45 @@ void Snake::eat(Food* food)
 	}
 }
 
-bool Snake::checkCollision(int xPos, int yPos)
+void Snake::eat(Food* food)
 {
-	return xPos == m_Head->m_XPos && yPos == m_Head->m_YPos;
+	SnakePart* sp = new SnakePart(food->m_XPos, food->m_YPos, food->m_Width, food->m_Height);
+	m_Body.push_back(sp);
+	this->updateBody(food->m_XPos, food->m_YPos);
+}
+
+void Snake::checkCollision(Food* food)
+{
+	if (this->length() > 1)
+		for (int i = 1; i < this->length(); i++)
+		{
+			if (m_Head->m_XPos == m_Body.at(i)->m_XPos && m_Head->m_YPos == m_Body.at(i)->m_YPos)
+			{
+				m_IsAlive = false;
+			}
+		}
+
+	if (food->m_XPos == m_Head->m_XPos && food->m_YPos == m_Head->m_YPos)
+	{
+		this->eat(food);
+		food->respwan();
+
+		// TODO: This is the worst code for food respawn need to update
+		bool perfectRespawn = false;
+		while (!perfectRespawn)
+		{
+			perfectRespawn = true;
+			for (SnakePart* sp : m_Body)
+			{
+				if (sp->m_XPos == food->m_XPos && sp->m_YPos == food->m_YPos)
+				{
+					perfectRespawn = false;
+					food->respwan();
+					break;
+				}
+			}
+		}
+	}
 }
 
 int Snake::length()
@@ -111,19 +145,7 @@ void Snake::move(int xDir, int yDir)
 		newHeadY = 0;
 	}
 
-	int newXPos = newHeadX;
-	int newYPos = newHeadY;
-	for (int i = 0; i < m_Body.size(); i++) 
-	{
-		int prevXPos = m_Body.at(i)->m_XPos;
-		int prevYPos = m_Body.at(i)->m_YPos;
-		
-		m_Body.at(i)->m_XPos = newXPos;
-		m_Body.at(i)->m_YPos = newYPos;
-
-		newXPos = prevXPos;
-		newYPos = prevYPos;
-	}
+	this->updateBody(newHeadX, newHeadY);
 }
 
 void Snake::draw(SDL_Renderer* renderer)
@@ -189,6 +211,7 @@ bool Game::init()
 
 void Game::close()
 {
+	SDL_DestroyRenderer(m_Renderer);
 	SDL_DestroyWindow(m_Window);
 	m_Window = NULL;
 
@@ -287,26 +310,7 @@ void Game::run()
 		
 		snake.move(m_SnakeXDir, m_SnakeYDir);
 		
-		if (snake.checkCollision(food.m_XPos, food.m_YPos))
-		{
-			snake.eat(&food);
-			
-			food.respwan();
-			bool perfectRespawn = false;
-			while (!perfectRespawn)
-			{
-				perfectRespawn = true;
-				for (SnakePart* sp : snake.m_Body)
-				{
-					if (sp->m_XPos == food.m_XPos && sp->m_YPos == food.m_YPos)
-					{
-						perfectRespawn = false;
-						food.respwan();
-						break;
-					}
-				}
-			}
-		}
+		snake.checkCollision(&food);
 
 		food.draw(m_Renderer, food.m_Color);
 
@@ -322,7 +326,14 @@ void Game::run()
 		}
 
 		double FPS = 1 / (fpsTimer.getTicks() / 1000.0);
-		std::cout << FPS << std::endl;
+		std::cout << "FPS: " << FPS << std::endl;
+
+		if (snake.m_IsAlive == false)
+		{
+			m_IsRunning = false;
+			std::cout << "GAME OVER!!" << std::endl;
+			std::cout << "Score: " << snake.length() * 10 << std::endl;
+		}
 	}
 
 	this->close();

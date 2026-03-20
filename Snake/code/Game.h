@@ -48,7 +48,6 @@ struct Food : public Rect
 	void respwan();
 };
 
-
 struct Snake
 {
 	Color m_Color;
@@ -59,15 +58,17 @@ struct Snake
 	SnakePart* m_Head;
 	int m_XDir;
 	int m_YDir;
+	bool m_IsAlive;
 
 	Snake();
 	~Snake();
 
 	int length();
 	void eat(Food* food);
-	bool checkCollision(int xPos, int yPos);
+	void checkCollision(Food* food);
 	void move(int xDir, int yDir);
 	void draw(SDL_Renderer* renderer);
+	void updateBody(int newPosX, int newPosY);
 };
 
 struct Game
