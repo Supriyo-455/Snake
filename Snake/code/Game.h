@@ -12,7 +12,13 @@
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 800;
-const int SCREEN_HEIGHT = 800; 
+const int SCREEN_HEIGHT = 800;
+
+const int GAME_VIEWPORT_X = 10;
+const int GAME_VIEWPORT_Y = 10;
+const int GAME_VIEWPORT_WIDTH = 500;
+const int GAME_VIEWPORT_HEIGHT = 500;
+
 const int SCREEN_FPS = 15;
 const int SCREEN_TICKS_PER_FRAME = 1000 / SCREEN_FPS;
 
@@ -75,6 +81,7 @@ struct Game
 {
 	SDL_Window* m_Window;
 	SDL_Renderer* m_Renderer;
+	SDL_Rect m_GameViewPort;
 	bool m_IsRunning;
 
 	int m_SnakeXDir;

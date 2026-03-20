@@ -129,18 +129,18 @@ void Snake::move(int xDir, int yDir)
 
 	if (newHeadX < 0)
 	{
-		newHeadX = SCREEN_WIDTH;
+		newHeadX = GAME_VIEWPORT_WIDTH;
 	}
-	else if (newHeadX > SCREEN_WIDTH - m_Head->m_Width)
+	else if (newHeadX > GAME_VIEWPORT_WIDTH - m_Head->m_Width)
 	{
 		newHeadX = 0;
 	}
 	
 	if (newHeadY < 0)
 	{
-		newHeadY = SCREEN_HEIGHT;
+		newHeadY = GAME_VIEWPORT_HEIGHT;
 	}
-	else if (newHeadY > SCREEN_HEIGHT - m_Head->m_Height)
+	else if (newHeadY > GAME_VIEWPORT_HEIGHT - m_Head->m_Height)
 	{
 		newHeadY = 0;
 	}
@@ -158,8 +158,8 @@ void Snake::draw(SDL_Renderer* renderer)
 
 void Food::respwan()
 {
-	int cellsAlongXAxis = SCREEN_WIDTH / m_Width;
-	int cellsAlongYAxis = SCREEN_HEIGHT / m_Height;
+	int cellsAlongXAxis = GAME_VIEWPORT_WIDTH / m_Width;
+	int cellsAlongYAxis = GAME_VIEWPORT_HEIGHT / m_Height;
 
 	m_XPos = (rand() % cellsAlongXAxis) * m_Width;
 	m_YPos = (rand() % cellsAlongYAxis) * m_Height;
@@ -194,6 +194,8 @@ bool Game::init()
 			{
 				//Initialize renderer color
 				SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 0);
+
+				m_GameViewPort = {GAME_VIEWPORT_X, GAME_VIEWPORT_Y, GAME_VIEWPORT_WIDTH + 1, GAME_VIEWPORT_HEIGHT + 1};
 
 				// Initializing PNG loading
 				int imgFlags = IMG_INIT_PNG;
@@ -265,16 +267,22 @@ void Game::clearFrame()
 
 void Game::drawGrid(Color color, int rectW, int rectH)
 {
-	for (int i = 0; i < SCREEN_WIDTH; i += rectW)
+	for (int i = 0; i < GAME_VIEWPORT_WIDTH; i += rectW)
 	{
-		Rect rect = Rect(i, 0, 1, SCREEN_HEIGHT);
+		Rect rect = Rect(i, 0, 1, GAME_VIEWPORT_HEIGHT);
 		rect.draw(m_Renderer, color);
 	}
-	for (int j = 0; j < SCREEN_HEIGHT; j += rectH)
+	Rect rightSideLine = Rect(GAME_VIEWPORT_WIDTH, 0, 1, GAME_VIEWPORT_HEIGHT);
+	rightSideLine.draw(m_Renderer, color);
+
+	for (int j = 0; j < GAME_VIEWPORT_HEIGHT; j += rectH)
 	{
-		Rect rect = Rect(0, j, SCREEN_HEIGHT, 1);
+		Rect rect = Rect(0, j, GAME_VIEWPORT_WIDTH, 1);
 		rect.draw(m_Renderer, color);
 	}
+	
+	Rect bottomLine = Rect(0, GAME_VIEWPORT_HEIGHT, GAME_VIEWPORT_WIDTH, 1);
+	bottomLine.draw(m_Renderer, color);
 }
 
 void Game::run()
@@ -296,6 +304,7 @@ void Game::run()
 	Color blueColor = Color(0, 0, 255, 255);
 
 	Snake snake;
+	// TODO: Bug in food pos
 	Food food = Food(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, snake.m_WidhtPerPart, snake.m_HeightPerPart);
 
 	while (m_IsRunning)
@@ -315,6 +324,8 @@ void Game::run()
 		food.draw(m_Renderer, food.m_Color);
 
 		snake.draw(m_Renderer);
+
+		SDL_RenderSetViewport(m_Renderer, &m_GameViewPort);
 
 		// Update the renderer
 		SDL_RenderPresent(m_Renderer);
