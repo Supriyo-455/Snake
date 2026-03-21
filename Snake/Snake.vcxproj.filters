@@ -24,6 +24,9 @@
     <ClCompile Include="code\Timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="code\Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="code\Game.h">
@@ -35,5 +38,11 @@
     <ClInclude Include="code\Timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="code\Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="font\lazy.ttf" />
   </ItemGroup>
 </Project>

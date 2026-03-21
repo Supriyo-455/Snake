@@ -1,32 +1,5 @@
 #include "Game.h"
 
-SDL_Texture* loadTexture(SDL_Renderer* renderer, std::string path)
-{
-	//The final texture
-	SDL_Texture* newTexture = NULL;
-
-	//Load image at specified path
-	SDL_Surface* loadedSurface = IMG_Load(path.c_str());
-	if (loadedSurface == NULL)
-	{
-		printf("Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
-	}
-	else
-	{
-		//Create texture from surface pixels
-		newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
-		if (newTexture == NULL)
-		{
-			printf("Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
-		}
-
-		//Get rid of old loaded surface
-		SDL_FreeSurface(loadedSurface);
-	}
-
-	return newTexture;
-}
-
 Snake::Snake()
 {
 	m_XDir = 0;
@@ -135,7 +108,7 @@ void Snake::move(int xDir, int yDir)
 	{
 		newHeadX = 0;
 	}
-	
+
 	if (newHeadY < 0)
 	{
 		newHeadY = GAME_VIEWPORT_HEIGHT;
@@ -185,7 +158,7 @@ bool Game::init()
 		else
 		{
 			m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_ACCELERATED);
-			if(m_Renderer == NULL)
+			if (m_Renderer == NULL)
 			{
 				printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
 				return false;
@@ -195,7 +168,19 @@ bool Game::init()
 				//Initialize renderer color
 				SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 0);
 
-				m_GameViewPort = {GAME_VIEWPORT_X, GAME_VIEWPORT_Y, GAME_VIEWPORT_WIDTH + 1, GAME_VIEWPORT_HEIGHT + 1};
+				m_GameViewPort = {
+					GAME_VIEWPORT_X,
+					GAME_VIEWPORT_Y,
+					GAME_VIEWPORT_WIDTH + 1,
+					GAME_VIEWPORT_HEIGHT + 1 
+				};
+
+				m_TextViewPort = {
+					GAME_VIEWPORT_WIDTH + 1,
+					GAME_VIEWPORT_Y,
+					(SCREEN_WIDTH - (GAME_VIEWPORT_WIDTH + GAME_VIEWPORT_X + 1)),
+					(GAME_VIEWPORT_HEIGHT + 1) 
+				};
 
 				// Initializing PNG loading
 				int imgFlags = IMG_INIT_PNG;
@@ -203,6 +188,22 @@ bool Game::init()
 				{
 					printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
 					return false;
+				}
+
+				//Initialize SDL_ttf
+				if (TTF_Init() == -1)
+				{
+					printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
+					return false;
+				}
+				else
+				{
+					m_Font = TTF_OpenFont("font/lazy.ttf", 28);
+					if (m_Font == NULL)
+					{
+						printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
+						return false;
+					}
 				}
 			}
 		}
@@ -215,8 +216,9 @@ void Game::close()
 {
 	SDL_DestroyRenderer(m_Renderer);
 	SDL_DestroyWindow(m_Window);
-	m_Window = NULL;
 
+	TTF_Quit();
+	IMG_Quit();
 	SDL_Quit();
 }
 
@@ -280,7 +282,7 @@ void Game::drawGrid(Color color, int rectW, int rectH)
 		Rect rect = Rect(0, j, GAME_VIEWPORT_WIDTH, 1);
 		rect.draw(m_Renderer, color);
 	}
-	
+
 	Rect bottomLine = Rect(0, GAME_VIEWPORT_HEIGHT, GAME_VIEWPORT_WIDTH, 1);
 	bottomLine.draw(m_Renderer, color);
 }
@@ -290,11 +292,14 @@ void Game::run()
 	if (!this->init())
 	{
 		// TODO: Logging
-		printf("unable to init window!");
+		printf("unable to init window!\n");
 	}
 
 	m_IsRunning = true;
-	
+
+	Texture texture = Texture(m_Renderer);
+	Texture totalScoreTexture = Texture(m_Renderer);
+
 	Timer fpsTimer;
 	Timer capTimer;
 
@@ -305,7 +310,7 @@ void Game::run()
 
 	Snake snake;
 	// TODO: Bug in food pos
-	Food food = Food(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, snake.m_WidhtPerPart, snake.m_HeightPerPart);
+	Food food = Food(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, snake.m_WidhtPerPart, snake.m_HeightPerPart);
 
 	while (m_IsRunning)
 	{
@@ -315,20 +320,20 @@ void Game::run()
 		this->clearFrame();
 		this->input();
 
+		SDL_RenderSetViewport(m_Renderer, &m_GameViewPort);
+
 		this->drawGrid(blueColor, snake.m_WidhtPerPart, snake.m_HeightPerPart);
-		
+
 		snake.move(m_SnakeXDir, m_SnakeYDir);
-		
+
 		snake.checkCollision(&food);
 
 		food.draw(m_Renderer, food.m_Color);
 
 		snake.draw(m_Renderer);
 
-		SDL_RenderSetViewport(m_Renderer, &m_GameViewPort);
 
-		// Update the renderer
-		SDL_RenderPresent(m_Renderer);
+		SDL_RenderSetViewport(m_Renderer, &m_TextViewPort);
 
 		int frameTicks = capTimer.getTicks();
 		if (frameTicks < SCREEN_TICKS_PER_FRAME)
@@ -336,8 +341,11 @@ void Game::run()
 			SDL_Delay(SCREEN_TICKS_PER_FRAME - frameTicks);
 		}
 
-		double FPS = 1 / (fpsTimer.getTicks() / 1000.0);
-		std::cout << "FPS: " << FPS << std::endl;
+		float FPS = 1 / (fpsTimer.getTicks() / 1000.0);
+		
+		char buf[256] = {0};
+		sprintf_s(buf, "FPS: %f", FPS);
+		texture.loadFromRenderedText(buf, m_Font, Color(255, 255, 255, 255));
 
 		if (snake.m_IsAlive == false)
 		{
@@ -345,6 +353,22 @@ void Game::run()
 			std::cout << "GAME OVER!!" << std::endl;
 			std::cout << "Score: " << snake.length() * 10 << std::endl;
 		}
+
+		texture.render(
+			GAME_VIEWPORT_X,
+			0
+		);
+
+		sprintf_s(buf, "Score: %d", snake.length() * 10);
+		totalScoreTexture.loadFromRenderedText(buf, m_Font, Color(255, 255, 0, 255));
+
+		totalScoreTexture.render(
+			GAME_VIEWPORT_X,
+			texture.getHeight() + GAME_VIEWPORT_Y
+		);
+
+		// Update the renderer
+		SDL_RenderPresent(m_Renderer);
 	}
 
 	this->close();
