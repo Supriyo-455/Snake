@@ -1,0 +1,24 @@
+[] Current functionality
+	* Snake can move, eat and grow
+	* Foods will spawn randomly in empty space
+	* Text rendering
+	* Players will gain score by eating more food
+	* FPS is locked to 15 for easier maneuver
+
+[] Future upgrades
+	* Fullscreen support
+	* Pause game functionality
+	* Sound system
+	* Menu system with setting up the speed of snake
+	* Save score in a file with person name
+	* Cool animations
+	* Camera shake while eating
+	* Special kind of foods
+	* Cool Textures
+	* Procedual levels
+	* Change the food respawn code to empty tile based search first instead of random tile
+	
+[] Current bugs
+	* No way to control the rendered text width and height
+	* Viewport not working properly can result in bugs
+	* Sometimes a littlebit part of snake renderes in opposite edge when moving near the current edge

@@ -45,4 +45,7 @@
   <ItemGroup>
     <Font Include="font\lazy.ttf" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="TODO.txt" />
+  </ItemGroup>
 </Project>
